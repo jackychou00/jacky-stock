@@ -11,3 +11,5 @@ urigo:angular
 http
 evrei:angular-strap
 mizzao:bootstrap-3
+accounts-ui
+accounts-password
