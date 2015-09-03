@@ -9,6 +9,8 @@
     <div class="container">
         <div class="navbar-header">
             <a class="navbar-brand" href="#">台股</a>
+            <a class="navbar-brand" href="#">{{> loginButtons}}</a>
+             
         </div>
     </div>
 </nav>
@@ -28,9 +30,12 @@
                             <span ng-bind="stock.ch"></span>
                             <span>-</span>
                             <span ng-bind="stock.n"></span>
+                            
                             <span class="pull-right btn btn-xs btn-default"
                                   ng-disabled="isSubscribed(stock)"
-                                  ng-click="addToSubscribe(stock)"> > </span>
+                                  ng-click="addToSubscribe(stock)"> > 
+                            </span>
+                            
                         </div>
                         <div class="clearfix"></div>
                     </td>
@@ -55,7 +60,7 @@
                 <div ng-repeat="s in subscribeStocks">
                     <div class="col-md-3">
                         <div class="panel panel-default">
-                            <button class="pull-right btn btn-xs btn-danger" ng-click="unsubscribe(s)">&times;</button>
+                            <button class="pull-right btn btn-xs btn-danger" ng-click="unsubscribe(s,$index)">&times;</button>
                             <div>
                                 <div>
                                     <span ng-bind="s.ch"></span>

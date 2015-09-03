@@ -7,6 +7,7 @@ if (Meteor.isClient) {
     var app = angular.module('StockApp', ['angular-meteor']);
 
     app.controller("StockCtrl", ['$scope', '$meteor', '$interval', function ($scope, $meteor, $interval) {
+        $scope.$meteorSubscribe('stocks');
         $scope.stocksInSearch = $meteor.collection(function () {
             return StockCollection.find($scope.getReactively('keywordQuery'), {sort: {ch: 1}});
         });
@@ -21,21 +22,50 @@ if (Meteor.isClient) {
                 }
             }
         });
-
-
         $scope.subscribeStocks = []
+        Meteor.subscribe('user');
+
+        if(Meteor.userId()){
+            Meteor.call('getUserStock',Meteor.userId(),function(err, response) {
+                response.forEach(function(stock){
+                    result = StockCollection.findOne({ch:stock});
+                    $scope.subscribeStocks.push(result)
+                })
+            });
+            
+        }
+        
+        
         $scope.addToSubscribe = function (ch) {
-            $scope.subscribeStocks.push(ch);
+            
+            //如果有登入,加入帳戶資料
+            if(Meteor.userId()){
+                Meteor.call('setUserStock',ch,function(err, response) {
+                    
+                });
+
+            }
+            $scope.subscribeStocks.push(ch)
             $scope.refreshSubscribeStocks();
         }
         $scope.isSubscribed = function (stock) {
-            return _.contains($scope.subscribeStocks, stock);
+            console.log(stock)
+            console.log($scope.subscribeStocks)
+            console.log(_.contains($scope.subscribeStocks, stock))
+            var chs = $scope.subscribeStocks.map(function(stock){return stock.ch});
+            return _.contains(chs, stock.ch);
         }
-        $scope.unsubscribe = function (stock) {
+        $scope.unsubscribe = function (stock,index) {
             $scope.subscribeStocks = _.without($scope.subscribeStocks, stock);
-        }
 
+            Meteor.call('unsetUserStock',Meteor.userId(),index,function(err, response) {
+                    
+            });
+            
+        }
+        $scope.$meteorSubscribe('StockLastPrice');
         var getLastPriceInfo = function (ch) {
+            
             var info = StockLastPriceCollection.findOne({stockId: ch}).info;
             return {
                 lastPrice: info.l_cur.replace("NT$", ""),
@@ -45,17 +75,24 @@ if (Meteor.isClient) {
             };
         }
 
+
+
         $scope.refreshSubscribeStocks = function () {
+            
+            
             $scope.subscribeStocks.forEach(function (stock) {
                 stock.priceInfo = getLastPriceInfo(stock.ch);
             });
+            
         }
         $interval($scope.refreshSubscribeStocks, 2500);
 
-
+        $scope.$meteorSubscribe('test00');
         refreshTseT00 = function () {
-            var find = TseT00PriceCollection.findOne({}, {limit: 1, sort: {tlong: -1}});
-            $scope.tseT00 = find;
+            TseT00PriceCollection.find({}).forEach(function(e){
+                $scope.tseT00 = e;   
+            })
+            
         }
         refreshTseT00();
         $interval(refreshTseT00, 2500);
@@ -85,6 +122,10 @@ if (Meteor.isClient) {
 
 
     }]);
+
+    Accounts.ui.config({
+        passwordSignupFields: "USERNAME_ONLY"
+    });
 
 }
 
@@ -194,4 +235,45 @@ if (Meteor.isServer) {
         }
     )
     ;
+    Meteor.methods({
+        setUserStock: function (stock) {
+        Meteor.users.update(
+            { _id: Meteor.userId() },
+            {
+            $push: { 
+                stocks:stock.ch
+            }
+        });
+                
+      
+      },
+      getUserStock: function (userId){
+         result = Meteor.users.findOne({ _id: userId});
+         return result.stocks
+      },
+      unsetUserStock: function (userId,index){
+        var stock = {}
+        stock["stocks."+index] = 1
+        Meteor.users.update({_id: userId},{$unset:stock});
+        Meteor.users.update({_id: userId},{$pull:{"stocks":null}});
+      }
+
+      
+    });
+
+    
+
+    Meteor.publish("test00", function(){
+        var result  = TseT00PriceCollection.find({}, {limit: 1, sort: {tlong: -1}});
+        return result;
+    })
+
+    Meteor.publish("stocks",function(){
+        return StockCollection.find({});
+        
+        //return result1;
+    })
+    Meteor.publish("StockLastPrice",function(){
+        return StockLastPriceCollection.find({});
+    })
 }
